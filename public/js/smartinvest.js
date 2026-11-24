@@ -1,0 +1,19 @@
+(()=>{
+ const minima={starter:5000000,growth:8000000,pro:15000000};
+ const params=new URLSearchParams(location.search),form=document.getElementById('investment-form'),notice=document.getElementById('investment-notice');
+ const validPlan=p=>Object.hasOwn(minima,p);
+ function checkout(data){location.href='investment-checkout.html?'+new URLSearchParams({plan:data.plan,amount:data.amount,months:data.months})}
+ if(form){
+  const plan=form.elements.plan,amount=form.elements.amount,months=form.elements.months;
+  function sync(reset=false){const min=minima[plan.value];amount.min=min;if(reset||Number(amount.value)<min)amount.value=min;document.getElementById('investment-minimum').textContent='Minimum for this plan: '+cash(min);for(const button of document.querySelectorAll('[data-plan]')){const selected=button.dataset.plan===plan.value;button.setAttribute('aria-pressed',String(selected));button.classList.toggle('secondary',!selected)}}
+  if(validPlan(params.get('plan')))plan.value=params.get('plan');const initial=Number(params.get('amount'));if(Number.isSafeInteger(initial)&&initial>=minima[plan.value]&&initial<=1000000000)amount.value=initial;const term=Number(params.get('months'));if(Number.isSafeInteger(term)&&term>=1&&term<=60)months.value=term;sync();
+  plan.addEventListener('change',()=>sync(true));for(const button of document.querySelectorAll('[data-plan]'))button.addEventListener('click',()=>{plan.value=button.dataset.plan;sync(true);form.scrollIntoView({behavior:'smooth',block:'center'})});
+  formSubmit(form,async data=>{try{await api('smartinvest/review',data);checkout(data)}catch(e){showMessage(notice,e.message,true)}});
+ }
+ const result=document.getElementById('investment-review');if(result){const data={plan:params.get('plan'),amount:params.get('amount'),months:params.get('months')};api('smartinvest/review',data).then(r=>{document.getElementById('review-plan').textContent=r.plan;document.getElementById('review-months').textContent=r.months+' month'+(r.months===1?'':'s');document.getElementById('review-amount').textContent=cash(r.amount);document.getElementById('review-rate').textContent=r.monthlyRate+'% (hypothetical)';document.getElementById('change-selection').href='investment-plans.html?'+new URLSearchParams(data);showMessage(notice,'Selection confirmed. No payment has been taken.');result.hidden=false}).catch(e=>{showMessage(notice,e.message+' Choose a valid plan to continue.',true);notice.after(link('Choose a plan','investment-plans.html'))})}
+ const calculator=document.getElementById('smartinvest-calculator');if(calculator){
+  const output=document.getElementById('result'),plan=calculator.elements.plan,amount=calculator.elements.amount;let revision=0;
+  const clear=()=>{revision++;output.replaceChildren()};plan.addEventListener('change',()=>{amount.min=minima[plan.value];amount.value=minima[plan.value];clear()});amount.addEventListener('input',clear);calculator.elements.months.addEventListener('input',clear);
+  formSubmit(calculator,async data=>{const request=++revision;try{const r=await api('smartinvest/review',data);if(request!==revision)return;output.replaceChildren();output.classList.remove('rph-error');const table=el('dl',undefined,'rph-investment-summary');for(const [label,value] of [['Principal',cash(r.amount)],['Assumed monthly rate',r.monthlyRate+'%'],['Duration',r.months+' months'],['Illustrative monthly return',cash(r.monthlyReturn)],['Illustrative total return',cash(r.totalReturn)],['Illustrative principal + returns',cash(r.projectedTotal)]])table.append(el('dt',label),el('dd',value));output.append(table,el('p','These are hypothetical simple-return calculations, not a promise of profit. Capital is at risk.'),link('Review this selection','investment-plans.html?'+new URLSearchParams(data)))}catch(e){if(request===revision)showMessage(output,e.message,true)}});
+ }
+})();

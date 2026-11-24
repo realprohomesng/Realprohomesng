@@ -1,0 +1,15 @@
+{
+  "name": "realprohomesng",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.13"},
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch --env-file-if-exists=.env server.js",
+    "test": "node --test test/app.test.js",
+    "check": "node --check server.js && node --check app.js && node --check config/database.js && node --check config/cloudinary.js && node --check scripts/migrate-sqlite.js",
+    "migrate:sqlite": "node --env-file-if-exists=.env scripts/migrate-sqlite.js"
+  },
+  "dependencies": {"express": "^5.1.0", "mongodb": "^6.17.0", "cloudinary": "^2.7.0"}
+}
