@@ -75,32 +75,51 @@ if(hero){const actions=el('div',undefined,'rph-home-actions');const existing=her
  const intro=el('section',undefined,'rph-wrap');intro.append(el('span','HOME FOR ALL','rph-tag'),el('h2','Invest with confidence','rph-title'));const grid=el('div',undefined,'rph-grid');
  for(const [heading,description,href] of [['Find your home','Explore available homes and investment opportunities.','property-listing.html'],['Book an inspection','Speak with our team and arrange a visit.','Bookinspection.html'],['Pay securely','Use the invoice reference supplied by our team.','pay.html']]){const c=el('article',undefined,'rph-card');c.append(el('h3',heading),el('p',description),link('Learn more',href));grid.append(c)}intro.append(grid);hero.after(intro);
 }
-const opportunityForm =
-    document.getElementById('opportunityForm');
 
-if (opportunityForm) {
-    const status = el('p', '', 'rph-message');
-    status.setAttribute('role', 'status');
-    opportunityForm.append(status);
 
-    formSubmit(opportunityForm, async (data) => {
-        try {
-            await api('inquiry', {
+document.getElementById('opportunityForm')
+?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const status = document.getElementById('applicationStatus');
+    const button = this.querySelector('button[type="submit"]');
+    const data = new FormData(this);
+
+    status.textContent = 'Submitting application...';
+    button.disabled = true;
+
+    try {
+        const response = await fetch('/api/inquiry', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
                 kind: 'interest',
-                name: data.fullname,
-                email: data.email,
-                phone: data.phone,
-                message: `Opportunity: ${data.opportunity}\n${data.message}`
-            });
+                name: data.get('fullname'),
+                email: data.get('email'),
+                phone: data.get('phone'),
+                message: 'Opportunity: ' +
+                    data.get('opportunity') + '\n' +
+                    data.get('message')
+            })
+        });
 
-            opportunityForm.reset();
+        const result = await response.json();
 
-            showMessage(status,
-                'Application submitted successfully. Our team will contact you.'
-            );
-
-        } catch (error) {
-            showMessage(status, error.message, true);
+        if (!response.ok) {
+            throw new Error(result.error || 'Submission failed');
         }
-    });
-}
+
+        status.style.color = 'green';
+        status.textContent = 'Application submitted successfully!';
+        this.reset();
+
+    } catch (error) {
+        status.style.color = 'red';
+        status.textContent = error.message;
+    } finally {
+        button.disabled = false;
+    }
+});
+

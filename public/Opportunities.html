@@ -154,7 +154,7 @@
     <section class="form-section">
   <h2>Apply or Contact Us</h2>
   <p>Fill out the form below to express your interest in any of our opportunities.</p>
-   <form id="opportunityForm"></form>
+   <form id="opportunityForm"  method="post"></form>
     <div class="form-group">
       <label for="fullname">Full Name</label>
       <input type="text" id="fullname" name="fullname" required>
@@ -186,6 +186,7 @@
     </div>
 
     <button type="submit">Submit Application</button>
+    <p id="applicationStatus" role="status"></p>
   </form>
 </section>
 
@@ -265,5 +266,5 @@
 
 
     <script src="js/script.js"></script>
-<script src="js/site.js" defer></script></body>
+<script src="js/site.js?v=2" defer></script></body>
 </html>
