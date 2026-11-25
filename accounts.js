@@ -35,15 +35,24 @@ export function mountAccounts(app,db,h){
   limit(req,'forgot-password',8);const id=clean(data(req).email).toLowerCase();if(!email(id))fail('Enter a valid email address');
   if(!resetEmailConfigured())fail('Password reset emails are not configured. Contact RealProHomesNG.',503);
   const u=await users.findOne({_id:id});
-  // Respond identically for registered, unknown, suspended and recently requested addresses.
-  res.json({ok:true,message:'If an eligible account exists, a reset link will be sent to its registered email address.'});
-  if(!u||u.suspended===true)return;
-  const token=randomBytes(32).toString('hex'),digest=createHash('sha256').update(token).digest('hex'),time=Date.now();
-  try{
+  // Keep the request alive until the email provider accepts the message.
+  // Return the same public response for all addresses (including unknown accounts).
+  if(u&&u.suspended!==true){
+   const token=randomBytes(32).toString('hex'),digest=createHash('sha256').update(token).digest('hex'),time=Date.now();
    const result=await users.updateOne({_id:id,suspended:{$ne:true},$or:[{resetRequestedAt:{$exists:false}},{resetRequestedAt:{$lt:time-60000}}]},{$set:{resetTokenHash:digest,resetExpiresAt:time+30*60000,resetRequestedAt:time}});
-   if(!result.modifiedCount)return;
-   const link=new URL('/reset-password.html',base);link.hash=token;await resetEmail({email:u._id,link:link.href});
-  }catch{console.warn('Password reset email could not be sent. Check email configuration.');}
+   if(result.modifiedCount){
+    try{
+     const link=new URL('/reset-password.html',base);link.hash=token;
+     await resetEmail({email:u._id,link:link.href});
+     console.info('Password reset email accepted by provider.');
+    }catch(error){
+     // Release the cooldown only for this failed attempt so the user can retry.
+     await users.updateOne({_id:id,resetTokenHash:digest},{$unset:{resetTokenHash:'',resetExpiresAt:'',resetRequestedAt:''}});
+     console.warn('Password reset email not confirmed: '+(error.providerCode||'delivery request failed'));
+    }
+   }
+  }
+  res.json({ok:true,message:'If an eligible account exists, a reset link will be sent to its registered email address.'});
  });
  app.post('/api/account/reset-password',json,async(req,res)=>{
   limit(req,'reset-password',12);const {token,password}=data(req);if(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token))fail('This reset link is invalid or expired. Request a new one.');

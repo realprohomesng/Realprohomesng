@@ -148,3 +148,6 @@ footer{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(1
 #phonenumber i {
     color: #08af2c !important;
 }
+/* Use only the text glyphs rendered by site.js, not Font Awesome's extra glyph. */
+#bar::before,#bar::after,#close::before,#close::after{content:none!important;display:none!important}
+@media(max-width:1024px){#header:has(#navbar.active) #mobile{visibility:hidden}#navbar:not(.active) #close{visibility:hidden}}

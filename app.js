@@ -16,6 +16,7 @@ const now=()=>new Date().toISOString();
 const same=(a,b)=>timingSafeEqual(createHash('sha256').update(a).digest(),createHash('sha256').update(b).digest());
 function fail(message,status=400){throw Object.assign(new Error(message),{status})}
 function record({_id,cloudinary_id,ownerId,...fields}){return {id:String(_id),...fields}}
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function decodePhoto(value){
  if(typeof value!=='string')fail('Choose a property photo');
  const match=/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
@@ -63,6 +64,14 @@ app.use('/api', (req, res, next) => {
  const data=req=>{if(!req.is('application/json')||!req.body||typeof req.body!=='object'||Array.isArray(req.body))fail('JSON required',415);return req.body};
  const list=async collection=>(await collection.find({}).sort({created:-1}).toArray()).map(record);
  app.get('/api/health',async(req,res)=>{await db.command({ping:1});res.json({ok:true})});
+ // Public, server-rendered property card for WhatsApp link previews.
+ app.get('/property-share/:id',async(req,res)=>{
+  const p=await properties.findOne({_id:clean(req.params.id)});
+  if(!p)return res.status(404).send('Property not found');
+  let photo;try{photo=new URL(p.image,base);if(!['https:','http:'].includes(photo.protocol))throw Error()}catch{return res.status(404).send('Property photo unavailable')}
+  const title=escapeHtml(p.title),description=escapeHtml(`${p.location} · ${new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN'}).format(p.price)}`),image=escapeHtml(photo.href),url=escapeHtml(new URL('/property-share/'+encodeURIComponent(p._id),base).href);
+  res.set('Cache-Control','public, max-age=300').type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} | RealProHomesNG</title><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:image" content="${image}"><meta property="og:url" content="${url}"><meta property="og:site_name" content="RealProHomesNG"><link rel="stylesheet" href="/modern.css"></head><body><main class="rph-wrap"><article class="rph-card rph-property-card"><img src="${image}" alt="${title}" style="max-width:100%;height:auto"><h1>${title}</h1><p>${description}</p><p>${escapeHtml(p.description)}</p><a class="rph-button" href="/property-listing.html">Browse properties</a></article></main></body></html>`);
+ });
  app.post('/api/login',json,async(req,res)=>{
   limit(req,'login',8);const b=data(req),password=process.env.ADMIN_PASSWORD||'';
   if(password.length<12||!process.env.ADMIN_EMAIL)fail('Administrator setup required',503);
