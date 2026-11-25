@@ -35,7 +35,27 @@ export function createApp(db,{upload=uploadPhoto,remove=removePhoto,paymentProvi
  const sessions=new Map(),attempts=new Map(),base=new URL(process.env.PUBLIC_BASE_URL||'http://localhost:3000'),secure=base.protocol==='https:';
  app.disable('x-powered-by');
  app.use((req,res,next)=>{res.set({'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'});next()});
- app.use('/api',(req,res,next)=>{res.set('Cache-Control','no-store');if(!['GET','HEAD'].includes(req.method)&&req.headers.origin!==base.origin)return res.status(403).json({error:'Invalid request origin'});next()});
+
+ const allowedOrigins = new Set([
+    base.origin,
+    'https://www.realprohomesng.com',
+    'https://realprohomesng.com'
+]);
+
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+
+    if (
+        !['GET', 'HEAD'].includes(req.method) &&
+        !allowedOrigins.has(req.headers.origin)
+    ) {
+        return res.status(403).json({
+            error: 'Invalid request origin'
+        });
+    }
+
+    next();
+});
  function token(req){const t=(req.headers.cookie||'').match(/(?:^|;\s*)rph_session=([a-f0-9]+)/)?.[1];return t&&sessions.get(t)>Date.now()?t:null}
  function requireAdmin(req,res,next){if(!token(req))return res.status(401).json({error:'Sign in required'});next()}
  function limit(req,key,max=20){const k=key+req.socket.remoteAddress,a=attempts.get(k)||{count:0,until:0};if(a.until<Date.now()){a.count=0;a.until=Date.now()+600000}if(++a.count>max)fail('Please try again later',429);attempts.set(k,a)}
