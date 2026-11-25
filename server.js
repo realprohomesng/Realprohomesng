@@ -12,9 +12,9 @@ let websiteApp;
 app.use((req, res, next) => {
     if (!websiteApp) {
         res.set('Retry-After', '5');
-        return res.status(503).send(
-            'RealProHomesNG is starting. Please refresh shortly.'
-        );
+       return res.status(503).json({
+    error: 'RealProHomesNG is starting. Please refresh shortly.'
+});
     }
 
     websiteApp(req, res, next);
