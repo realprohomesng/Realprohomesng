@@ -9,12 +9,15 @@ const PORT = Number(process.env.PORT || 3000);
 let client;
 let websiteApp;
 // Handle requests while MongoDB initializes
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
     if (!websiteApp) {
-        res.set('Retry-After', '5');
-       return res.status(503).json({
-    error: 'RealProHomesNG is starting. Please refresh shortly.'
-});
+        await initialization;
+    }
+
+    if (!websiteApp) {
+        return res.status(503).json({
+            error: 'Database unavailable. Please try again.'
+        });
     }
 
     websiteApp(req, res, next);
@@ -46,7 +49,7 @@ async function initialize() {
     }
 }
 
-initialize();
+const initialization = initialize();
 
 // Graceful shutdown
 const shutdown = () => {
