@@ -21,7 +21,7 @@ function renderInquiries(){
  table('inquiries',['Type','Name','Email / phone','Message','Received','Status','Email notification'],visible.map(i=>{
   let notification='—';if(['newsletter','contact'].includes(i.kind)){notification=el('div');const status=i.notificationStatus||'not_configured';notification.append(el('p',({sent:'Sent to email provider',failed:'Failed',pending:'Pending',not_configured:'Not configured'})[status]||status));if(status!=='sent')notification.append(btn('Retry email',async()=>{const r=await api(i.kind==='contact'?'admin/contact-notify':'admin/newsletter-notify',{id:i.id});await loadInquiries();showMessage(notice,r.status==='sent'?'Email notification sent.':'Email not sent. Check your email configuration.',r.status!=='sent')}))}
   const review=el('div');if(i.status==='new')review.append(el('span','NEW','rph-unread-tag'),btn('Mark reviewed',async()=>{await api('admin/inquiry',{id:i.id});await loadInquiries()}));else review.textContent='Reviewed';
-  return [({'newsletter':'Newsletter subscriber','contact':'Contact enquiry','inspection':'Inspection request','interest':'Other interest'})[i.kind]||i.kind,i.name||'—',[i.email,i.phone].filter(Boolean).join(' · '),i.message,new Date(i.created).toLocaleString('en-NG'),review,notification];
+  return [({'newsletter':'Newsletter subscriber','contact':'Contact enquiry','inspection':'Inspection request','interest':'Other interest','application':'Job application'})[i.kind]||i.kind,i.name||'—',[i.email,i.phone].filter(Boolean).join(' · '),i.message,new Date(i.created).toLocaleString('en-NG'),review,notification];
  }));
  document.querySelectorAll('#inquiries tbody tr').forEach((row,index)=>row.classList.toggle('rph-inquiry-new',visible[index].status==='new'));
 }

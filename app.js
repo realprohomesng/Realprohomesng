@@ -99,7 +99,7 @@ app.use('/api', (req, res, next) => {
  }
  app.post('/api/inquiry',json,async(req,res)=>{
   limit(req,'inquiry');const b=data(req),kind=clean(b.kind,30),name=clean(b.name),mail=clean(b.email),phone=clean(b.phone),message=clean(b.message,3000);
-  if(!['contact','inspection','newsletter','interest'].includes(kind)||!email(mail)||(!name&&kind!=='newsletter'))fail('Enter valid contact details');
+  if(!['contact','inspection','newsletter','interest','application'].includes(kind)||!email(mail)||(!name&&kind!=='newsletter'))fail('Enter valid contact details');
   if(kind==='newsletter'){
    const address=mail.toLowerCase(),id='newsletter-'+createHash('sha256').update(address).digest('hex');
    const signup={_id:id,kind,email:address,name:'',phone:'',message:'Newsletter signup',created:now(),status:'new',notificationStatus:'pending'};
@@ -107,7 +107,9 @@ app.use('/api', (req, res, next) => {
    await notifySignup(signup);return res.status(201).json({ok:true});
   }
   if(kind==='contact'&&!message)fail('Enter your message');
-  const inquiry={_id:randomUUID(),kind,name,email:mail,phone,message,created:now(),status:'new',...(kind==='contact'?{notificationStatus:'pending'}:{})};await inquiries.insertOne(inquiry);if(kind==='contact')await notifySignup(inquiry);res.status(201).json({ok:true});
+  const position=kind==='application'?clean(b.position):'';
+  if(kind==='application'&&(!position||!message))fail('Enter the position and your application message');
+  const inquiry={_id:randomUUID(),kind,name,email:mail,phone,message:kind==='application'?'Position: '+position+'\n'+message.slice(0,2600):message,created:now(),status:'new',...(kind==='application'?{position}:{}),...(kind==='contact'?{notificationStatus:'pending'}:{})};await inquiries.insertOne(inquiry);if(kind==='contact')await notifySignup(inquiry);res.status(201).json({ok:true});
  });
  app.get('/api/smartinvest/plans',(req,res)=>res.json(investmentPlans));
  app.post('/api/smartinvest/review',json,(req,res)=>{limit(req,'investment-review',30);const review=reviewInvestment(data(req));if(!review)fail('Choose a valid plan, amount at or above the plan minimum, and duration of 1–60 months.');res.json(review)});

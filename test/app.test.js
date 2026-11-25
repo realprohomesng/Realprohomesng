@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
+import {runInNewContext} from 'node:vm';
 import {createApp} from '../app.js';
 import {sendPasswordReset} from '../config/password-reset.js';
 
@@ -155,6 +156,17 @@ test('Express API preserves publishing, inquiries and invoice workflow',async t=
  const contact=(await api('admin/inquiries'))[1].find(i=>i.email==='contact@example.com');assert.equal(contact.notificationStatus,'sent');
  mailFailure=true;assert.equal((await api('inquiry',{kind:'contact',name:'Customer',email:'contact-failed@example.com',message:'Request information'}))[0],201);const failedContact=(await api('admin/inquiries'))[1].find(i=>i.email==='contact-failed@example.com');assert.equal(failedContact.notificationStatus,'failed');mailFailure=false;
  assert.equal((await api('admin/contact-notify',{id:failedContact.id}))[1].status,'sent');
+ // Join Our Team ships a real form and handler, and submissions reach the admin inbox.
+ const joinHtml=await (await fetch(base+'/Joinourteam.html')).text();
+ assert.match(joinHtml,/<form id="joinTeamForm" method="post">/);assert.match(joinHtml,/name="position"/);assert.match(joinHtml,/js\/join-team\.js/);
+ const button={disabled:false},notice={textContent:'',classList:{toggle(){}}};let submit,resetCount=0,prevented=false;
+ const fields={name:'Test applicant',email:'applicant@example.com',position:'Site Engineer',message:'I have experience in property development.'};
+ const form={querySelector:()=>button,reportValidity:()=>true,addEventListener:(type,fn)=>{assert.equal(type,'submit');submit=fn},reset:()=>resetCount++};
+ runInNewContext(await readFile('public/js/join-team.js','utf8'),{document:{getElementById:id=>id==='joinTeamForm'?form:notice},FormData:class{constructor(){return new Map(Object.entries(fields))}},AbortSignal,fetch:async(path,options)=>fetch(base+path,{...options,headers:{...options.headers,origin:'http://localhost:3000'}})});
+ await submit({preventDefault(){prevented=true}});assert.ok(prevented);assert.equal(button.disabled,false);assert.equal(resetCount,1);assert.match(notice.textContent,/successfully/);
+ const applicant=(await api('admin/inquiries'))[1].find(i=>i.email==='applicant@example.com');assert.equal(applicant.kind,'application');assert.equal(applicant.position,fields.position);assert.match(applicant.message,/Position: Site Engineer/);assert.equal(applicant.status,'new');
+ fields.position='';await submit({preventDefault(){}});assert.equal(resetCount,1);assert.match(notice.textContent,/position/);assert.equal(button.disabled,false);
+ assert.match(await (await fetch(base+'/admin.html')).text(),/value="application">Job applications/);
  assert.equal((await api('logout',{}))[0],200);assert.equal((await api('admin/inquiries'))[0],401);
  // Password reset links are delivered only to the registered email and expire after one use.
  process.env.RESEND_API_KEY='test-key';process.env.NEWSLETTER_FROM='test@example.com';

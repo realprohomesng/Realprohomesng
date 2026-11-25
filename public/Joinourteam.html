@@ -140,12 +140,13 @@
   <section class="apply-form">
     <div class="containerteam">
       <h2>Apply Now</h2>
-      <form action="#" method="POST">
-        <input type="text" placeholder="Full Name" required />
-        <input type="email" placeholder="Email Address" required />
-        <input type="text" placeholder="Position You're Applying For" required />
-        <textarea placeholder="Tell us why you’re a great fit..." required></textarea>
+      <form id="joinTeamForm" method="post">
+        <input type="text" name="name" aria-label="Full name" placeholder="Full Name" autocomplete="name" maxlength="250" required />
+        <input type="email" name="email" aria-label="Email address" placeholder="Email Address" autocomplete="email" maxlength="250" required />
+        <input type="text" name="position" aria-label="Position" placeholder="Position You're Applying For" maxlength="250" required />
+        <textarea name="message" aria-label="Application message" placeholder="Tell us why you’re a great fit..." maxlength="2600" required></textarea>
         <button type="submit">Submit Application</button>
+        <p id="joinTeamStatus" class="rph-message" role="status" aria-live="polite"></p>
       </form>
     </div>
   </section>
@@ -229,5 +230,6 @@
 
 
     <script src="js/script.js"></script>
-<script src="js/site.js" defer></script></body>
+<script src="js/site.js" defer></script>
+<script src="js/join-team.js" defer></script></body>
 </html>
