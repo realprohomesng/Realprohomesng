@@ -2,6 +2,7 @@ import express from 'express';
 import { connectDatabase, seedProperties } from './config/database.js';
 import { configureCloudinary } from './config/cloudinary.js';
 import { createApp } from './app.js';
+import { resetEmailConfigured, PASSWORD_RESET_SENDER } from './config/password-reset.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -41,6 +42,8 @@ async function initialize() {
         }
 
         websiteApp = createApp(connection.db);
+        if (resetEmailConfigured()) console.info('Password reset email configured via Resend: '+PASSWORD_RESET_SENDER);
+        else console.warn('Password reset emails disabled: RESEND_API_KEY missing.');
 
         console.log('MongoDB connected. RealProHomesNG is ready.');
     } catch (error) {

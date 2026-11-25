@@ -2,6 +2,22 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
 import {createApp} from '../app.js';
+import {sendPasswordReset} from '../config/password-reset.js';
+
+test('Resend reset email uses the company sender, not stale environment senders',async t=>{
+ const original={key:process.env.RESEND_API_KEY,from:process.env.PASSWORD_RESET_FROM,newsletter:process.env.NEWSLETTER_FROM};
+ process.env.RESEND_API_KEY='test-only-key';process.env.PASSWORD_RESET_FROM='stale@example.com';process.env.NEWSLETTER_FROM='newsletter@example.com';
+ t.after(()=>{for(const [name,value] of [['RESEND_API_KEY',original.key],['PASSWORD_RESET_FROM',original.from],['NEWSLETTER_FROM',original.newsletter]]){if(value===undefined)delete process.env[name];else process.env[name]=value}});
+ const resetLink='https://www.realprohomesng.com/reset-password.html#test-token';
+ let reject=false;
+ t.mock.method(globalThis,'fetch',async(url,options)=>{
+  assert.equal(url,'https://api.resend.com/emails');const payload=JSON.parse(options.body);
+  assert.equal(payload.from,'RealProHomesNG <info@realprohomesng.com>');assert.deepEqual(payload.to,['recipient@example.com']);assert.ok(payload.text.includes(resetLink));
+  return reject?new Response(JSON.stringify({name:'validation_error'}),{status:403}):new Response(JSON.stringify({id:'test-email-id'}),{status:200});
+ });
+ assert.deepEqual(await sendPasswordReset({email:'recipient@example.com',link:resetLink}),{status:'accepted',id:'test-email-id'});
+ reject=true;await assert.rejects(sendPasswordReset({email:'recipient@example.com',link:resetLink}),e=>e.providerCode==='HTTP 403 (validation_error)');
+});
 
 // Test-only substitutes exercise the actual Express API without accessing cloud accounts.
 class Collection{
